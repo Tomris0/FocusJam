@@ -170,7 +170,7 @@ No ads 🚫📺. Free + Premium tiers 🆓💎. Goal: fair, affordable plans tha
 ---
 
 ## RUN LOCALLY ▶️
-```bash
+bash
 flutter pub get
 flutter run
 
