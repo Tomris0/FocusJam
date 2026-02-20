@@ -78,7 +78,7 @@ Reklam yok 🚫📺. Free + Premium kademeleri olacak 🆓💎. Amaç: kullanıc
 ---
 
 ## LOKAL ÇALIŞTIRMA ▶️
-```bash
+bash
 flutter pub get
 flutter run
 
