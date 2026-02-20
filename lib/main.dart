@@ -108,7 +108,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text('Room created'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -124,19 +124,34 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         actions: [
           TextButton(
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(dialogContext),
             child: const Text('Close'),
           ),
+
+          // ✅ Copy: dialog kapanmasın
           FilledButton(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: code));
               if (!mounted) return;
-              Navigator.pop(context);
               ScaffoldMessenger.of(this.context).showSnackBar(
                 const SnackBar(content: Text('Code copied to clipboard')),
               );
             },
             child: const Text('Copy'),
+          ),
+
+          // ✅ Continue: dialog kapanır, RoomScreen'e geçer
+          FilledButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.push(
+                this.context,
+                MaterialPageRoute(
+                  builder: (_) => RoomScreen(roomCode: code, isHost: true),
+                ),
+              );
+            },
+            child: const Text('Continue'),
           ),
         ],
       ),
@@ -176,6 +191,67 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: _openJoinSheet,
                 child: const Text('Join with Code'),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RoomScreen extends StatelessWidget {
+  final String roomCode;
+  final bool isHost;
+
+  const RoomScreen({
+    super.key,
+    required this.roomCode,
+    required this.isHost,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Room'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Leave'),
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Room Code',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            SelectableText(
+              roomCode,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              isHost ? 'Host: You 👑' : 'Host: (waiting...)',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 8),
+            const Text('Members: 1 / 16 (demo)'),
+            const Spacer(),
+            FilledButton(
+              onPressed: isHost ? () {} : null,
+              child: const Text('Start Session (host only)'),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Back to Home'),
             ),
           ],
         ),
