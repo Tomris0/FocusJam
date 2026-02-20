@@ -78,9 +78,9 @@ Reklam yok 🚫📺. Free + Premium kademeleri olacak 🆓💎. Amaç: kullanıc
 ---
 
 ## LOKAL ÇALIŞTIRMA ▶️
-bash
-flutter pub get
-flutter run
+-bash
+-flutter pub get
+-flutter run
 
 ## DURUM 📌
 
@@ -170,9 +170,9 @@ No ads 🚫📺. Free + Premium tiers 🆓💎. Goal: fair, affordable plans tha
 ---
 
 ## RUN LOCALLY ▶️
-bash
-flutter pub get
-flutter run
+-bash
+-flutter pub get
+-flutter run
 
 ## STATUS 📌
 
