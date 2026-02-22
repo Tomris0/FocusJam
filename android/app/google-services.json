@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "623015359847",
+    "project_id": "focusjam-de8a6",
+    "storage_bucket": "focusjam-de8a6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:623015359847:android:590c327ed9a9e66eb06bc2",
+        "android_client_info": {
+          "package_name": "com.example.focusjam"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCwf8zU19rDe3wwtEEdbyDqKAElxMLGBUM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

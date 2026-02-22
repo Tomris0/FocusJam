@@ -37,7 +37,7 @@ class _TimerScreenState extends State<TimerScreen> {
     super.initState();
 
     _breakSeconds = widget.breakMinutes * 60;
-    _setTotalSeconds = widget.workMinutes * 60; // total per set (toggle ON iken)
+    _setTotalSeconds = widget.workMinutes * 60; // total per set (toggle ON )
 
     if (widget.includeBreaksInTotal) {
       _focusSecondsInTotalMode = _setTotalSeconds - _breakSeconds;
