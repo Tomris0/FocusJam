@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'screens/home_screen.dart';
-import 'screens/auth_screen.dart';
+import 'screens/auth_gate.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,7 +17,7 @@ class FocusJamApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'FocusJam',
       theme: ThemeData(useMaterial3: true),
-      home: const AuthScreen(),
+      home: const AuthGate(),
     );
   }
 }

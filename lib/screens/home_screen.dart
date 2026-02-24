@@ -1,7 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'room_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -146,6 +146,15 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('FocusJam'),
         centerTitle: true,
+        actions: [
+          IconButton(
+            tooltip: 'Logout',
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+            },
+            icon: const Icon(Icons.logout),
+          ),
+        ],
       ),
       body: Padding(
         padding: const EdgeInsets.all(16),
