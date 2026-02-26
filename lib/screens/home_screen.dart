@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'room_screen.dart';
 import '../services/auth_service.dart';
+import '../services/room_service.dart';
 
 
 class HomeScreen extends StatefulWidget {
@@ -52,7 +53,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 12),
               FilledButton(
-                onPressed: () {
+                onPressed: () async {
                   final code = _codeController.text.trim().toUpperCase();
                   if (code.length != 6) {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -60,6 +61,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     );
                     return;
                   }
+
+                  try {
+                    await RoomService.instance.joinRoom(code);
+                  } catch (e) {
+                    if (!context.mounted) return;
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Room not found')),
+                    );
+                    return;
+                  }
+
+                  if (!context.mounted) return;
 
                   Navigator.pop(context);
 
@@ -125,10 +138,20 @@ class _HomeScreenState extends State<HomeScreen> {
             child: const Text('Copy'),
           ),
           FilledButton(
-            onPressed: () {
+            onPressed: () async {
+              await RoomService.instance.createRoom(
+                code: code,
+                workMinutes: 25,
+                breakMinutes: 5,
+                sets: 4,
+                includeBreaksInTotal: false,
+              );
+
+              if (!mounted) return;
+
               Navigator.pop(dialogContext);
               Navigator.push(
-                this.context,
+                context,
                 MaterialPageRoute(
                   builder: (_) => RoomScreen(roomCode: code, isHost: true),
                 ),
