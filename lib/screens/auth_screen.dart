@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import '../services/auth_service.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -22,6 +22,8 @@ class _AuthScreenState extends State<AuthScreen> {
     _password.dispose();
     super.dispose();
   }
+
+
 
   Future<void> _submit() async {
     final email = _email.text.trim();
@@ -106,21 +108,9 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithGoogle() async {
     setState(() => _loading = true);
     try {
-      final googleUser = await GoogleSignIn(
-        serverClientId: '623015359847-9n9bup4gdpoanmi18o50u8qt1gack752.apps.googleusercontent.com',
-      ).signIn();
-
-      if (googleUser == null) return;
-
-      final googleAuth = await googleUser.authentication;
-
-      final credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
-
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      await AuthService.instance.signInWithGoogle();
     } catch (e) {
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Google sign-in error: $e')),
       );
@@ -128,5 +118,7 @@ class _AuthScreenState extends State<AuthScreen> {
       if (mounted) setState(() => _loading = false);
     }
   }
+
+
 }
 

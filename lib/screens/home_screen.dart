@@ -1,8 +1,9 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'room_screen.dart';
+import '../services/auth_service.dart';
+
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -150,7 +151,8 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: 'Logout',
             onPressed: () async {
-              await FirebaseAuth.instance.signOut();
+              await AuthService.instance.signOut();
+
             },
             icon: const Icon(Icons.logout),
           ),
