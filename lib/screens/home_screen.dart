@@ -5,7 +5,6 @@ import 'room_screen.dart';
 import '../services/auth_service.dart';
 import '../services/room_service.dart';
 
-
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -27,8 +26,8 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       showDragHandle: true,
-      builder: (context) {
-        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+      builder: (sheetContext) {
+        final bottomInset = MediaQuery.of(sheetContext).viewInsets.bottom;
 
         return Padding(
           padding: EdgeInsets.fromLTRB(16, 16, 16, 16 + bottomInset),
@@ -56,7 +55,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onPressed: () async {
                   final code = _codeController.text.trim().toUpperCase();
                   if (code.length != 6) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
                       const SnackBar(content: Text('Code must be 6 characters.')),
                     );
                     return;
@@ -64,20 +63,23 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   try {
                     await RoomService.instance.joinRoom(code);
+                    await RoomService.instance.addSelfAsMember(code); // ✅ EKLENDİ
                   } catch (e) {
-                    if (!context.mounted) return;
-                    ScaffoldMessenger.of(context).showSnackBar(
+                    if (!sheetContext.mounted) return;
+                    ScaffoldMessenger.of(sheetContext).showSnackBar(
                       const SnackBar(content: Text('Room not found')),
                     );
                     return;
                   }
 
-                  if (!context.mounted) return;
+                  if (!sheetContext.mounted) return;
 
-                  Navigator.pop(context);
+                  Navigator.pop(sheetContext);
+                  _codeController.clear(); // opsiyonel
 
+                  if (!mounted) return;
                   Navigator.push(
-                    this.context,
+                    context,
                     MaterialPageRoute(
                       builder: (_) => RoomScreen(roomCode: code, isHost: false),
                     ),
@@ -87,7 +89,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => Navigator.pop(context),
+                onPressed: () => Navigator.pop(sheetContext),
                 child: const Text('Cancel'),
               ),
             ],
@@ -130,8 +132,8 @@ class _HomeScreenState extends State<HomeScreen> {
           FilledButton(
             onPressed: () async {
               await Clipboard.setData(ClipboardData(text: code));
-              if (!mounted) return;
-              ScaffoldMessenger.of(this.context).showSnackBar(
+              if (!dialogContext.mounted) return;
+              ScaffoldMessenger.of(dialogContext).showSnackBar(
                 const SnackBar(content: Text('Code copied to clipboard')),
               );
             },
@@ -146,10 +148,13 @@ class _HomeScreenState extends State<HomeScreen> {
                 sets: 4,
                 includeBreaksInTotal: false,
               );
+              await RoomService.instance.addSelfAsMember(code);
 
-              if (!mounted) return;
+              if (!dialogContext.mounted) return;
 
               Navigator.pop(dialogContext);
+
+              if (!mounted) return;
               Navigator.push(
                 context,
                 MaterialPageRoute(
@@ -175,7 +180,6 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Logout',
             onPressed: () async {
               await AuthService.instance.signOut();
-
             },
             icon: const Icon(Icons.logout),
           ),

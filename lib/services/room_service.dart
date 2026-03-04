@@ -95,4 +95,22 @@ class RoomService {
       }
     });
   }
+
+  Future<void> addSelfAsMember(String code) async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception('Not authenticated');
+
+    await roomRef(code).child('members/${user.uid}').set({
+      'displayName': user.displayName ?? user.email ?? 'User',
+      'photoUrl': user.photoURL,
+      'joinedAt': ServerValue.timestamp,
+      'lastSeenAt': ServerValue.timestamp,
+    });
+  }
+
+  Future<void> removeSelfFromMember(String code) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+    await roomRef(code).child('members/${user.uid}').remove();
+  }
 }
