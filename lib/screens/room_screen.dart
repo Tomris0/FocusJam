@@ -22,6 +22,7 @@ class RoomScreen extends StatefulWidget {
 
 class _RoomScreenState extends State<RoomScreen> {
   String get _myUid => FirebaseAuth.instance.currentUser?.uid ?? '';
+  bool _movedToTimer = false;
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +47,28 @@ class _RoomScreenState extends State<RoomScreen> {
 
         final hostUid = room['hostUid'] as String?;
         final bool amIHost = hostUid != null && _myUid.isNotEmpty && hostUid == _myUid;
+
+        final status = (room['status'] ?? 'lobby') as String;
+        final sessionRaw = room['session'];
+
+        if (status == 'running' && sessionRaw != null && !_movedToTimer) {
+          _movedToTimer = true;
+
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            if (!mounted) return;
+
+            await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => TimerScreen(roomCode: widget.roomCode),
+              ),
+            );
+
+            if (mounted) {
+              _movedToTimer = false;
+            }
+          });
+        }
 
         // Settings (DB’den oku -> lokal değişkenler)
         final settingsRaw = room['settings'];
@@ -258,19 +281,6 @@ class _RoomScreenState extends State<RoomScreen> {
                   onPressed: amIHost
                       ? () async {
                     await RoomService.instance.startSession(code: widget.roomCode);
-
-                    if (!context.mounted) return;
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => TimerScreen(
-                          workMinutes: workMin,
-                          breakMinutes: breakMin,
-                          sets: sets,
-                          includeBreaksInTotal: includeBreaksInTotal,
-                        ),
-                      ),
-                    );
                   }
                       : null,
                   child: const Text('Start Session (host only)'),

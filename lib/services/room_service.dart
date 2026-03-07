@@ -113,4 +113,158 @@ class RoomService {
     if (user == null) return;
     await roomRef(code).child('members/${user.uid}').remove();
   }
+
+  Future<void> advanceSession({required String code}) async {
+    final snap = await roomRef(code).get();
+    if (!snap.exists) throw Exception('Room not found');
+
+    final data = (snap.value as Map).cast<String, dynamic>();
+    if (data['hostUid'] != uid) throw Exception('Only host can advance');
+
+    final settings = (data['settings'] as Map).cast<String, dynamic>();
+    final sessionRaw = data['session'];
+
+    if (sessionRaw == null) return;
+
+    final session = (sessionRaw as Map).cast<String, dynamic>();
+
+    final int workMinutes = (settings['workMinutes'] ?? 25) as int;
+    final int breakMinutes = (settings['breakMinutes'] ?? 5) as int;
+    final int sets = (settings['sets'] ?? 4) as int;
+    final bool includeBreaksInTotal =
+    (settings['includeBreaksInTotal'] ?? false) as bool;
+
+    final String phase = (session['phase'] ?? 'focus') as String;
+    final int setIndex = (session['setIndex'] ?? 1) as int;
+
+    int focusSecNormal = workMinutes * 60;
+    int breakSec = breakMinutes * 60;
+    int focusSecTotalMode = (workMinutes * 60) - breakSec;
+    if (focusSecTotalMode < 0) focusSecTotalMode = 0;
+
+    if (includeBreaksInTotal) {
+      if (phase == 'focus') {
+        if (breakSec <= 0) {
+          if (setIndex < sets) {
+            await roomRef(code).update({
+              'status': 'running',
+              'session': {
+                'phase': 'focus',
+                'setIndex': setIndex + 1,
+                'setsTotal': sets,
+                'startAt': ServerValue.timestamp,
+                'phaseDurationSec': focusSecTotalMode,
+                'isPaused': false,
+                'remainingSec': null,
+              }
+            });
+          } else {
+            await endSession(code: code);
+          }
+          return;
+        }
+
+        await roomRef(code).update({
+          'status': 'running',
+          'session': {
+            'phase': 'break',
+            'setIndex': setIndex,
+            'setsTotal': sets,
+            'startAt': ServerValue.timestamp,
+            'phaseDurationSec': breakSec,
+            'isPaused': false,
+            'remainingSec': null,
+          }
+        });
+        return;
+      }
+
+      // break -> next focus or end
+      if (setIndex < sets) {
+        await roomRef(code).update({
+          'status': 'running',
+          'session': {
+            'phase': 'focus',
+            'setIndex': setIndex + 1,
+            'setsTotal': sets,
+            'startAt': ServerValue.timestamp,
+            'phaseDurationSec': focusSecTotalMode,
+            'isPaused': false,
+            'remainingSec': null,
+          }
+        });
+      } else {
+        await endSession(code: code);
+      }
+      return;
+    }
+
+    // Normal mode: focus -> break -> next focus
+    if (phase == 'focus') {
+      if (breakSec <= 0) {
+        if (setIndex < sets) {
+          await roomRef(code).update({
+            'status': 'running',
+            'session': {
+              'phase': 'focus',
+              'setIndex': setIndex + 1,
+              'setsTotal': sets,
+              'startAt': ServerValue.timestamp,
+              'phaseDurationSec': focusSecNormal,
+              'isPaused': false,
+              'remainingSec': null,
+            }
+          });
+        } else {
+          await endSession(code: code);
+        }
+        return;
+      }
+
+      await roomRef(code).update({
+        'status': 'running',
+        'session': {
+          'phase': 'break',
+          'setIndex': setIndex,
+          'setsTotal': sets,
+          'startAt': ServerValue.timestamp,
+          'phaseDurationSec': breakSec,
+          'isPaused': false,
+          'remainingSec': null,
+        }
+      });
+      return;
+    }
+
+    // break -> next focus or end
+    if (setIndex < sets) {
+      await roomRef(code).update({
+        'status': 'running',
+        'session': {
+          'phase': 'focus',
+          'setIndex': setIndex + 1,
+          'setsTotal': sets,
+          'startAt': ServerValue.timestamp,
+          'phaseDurationSec': focusSecNormal,
+          'isPaused': false,
+          'remainingSec': null,
+        }
+      });
+    } else {
+      await endSession(code: code);
+    }
+  }
+
+  Future<void> endSession({required String code}) async {
+    final snap = await roomRef(code).get();
+    if (!snap.exists) throw Exception('Room not found');
+
+    final data = (snap.value as Map).cast<String, dynamic>();
+    if (data['hostUid'] != uid) throw Exception('Only host can end');
+
+    await roomRef(code).update({
+      'status': 'ended',
+      'session': null,
+    });
+  }
 }

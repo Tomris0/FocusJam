@@ -1,18 +1,18 @@
 import 'dart:async';
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_database/firebase_database.dart';
+
+import '../services/room_service.dart';
 
 class TimerScreen extends StatefulWidget {
-  final int workMinutes;
-  final int breakMinutes;
-  final int sets;
-  final bool includeBreaksInTotal;
+  final String roomCode;
 
   const TimerScreen({
     super.key,
-    required this.workMinutes,
-    required this.breakMinutes,
-    required this.sets,
-    required this.includeBreaksInTotal,
+    required this.roomCode,
   });
 
   @override
@@ -20,141 +20,152 @@ class TimerScreen extends StatefulWidget {
 }
 
 class _TimerScreenState extends State<TimerScreen> {
-  Timer? _timer;
+  StreamSubscription<DatabaseEvent>? _roomSub;
+  Timer? _ticker;
 
-  late int _focusSecondsInTotalMode;
-  late int _setTotalSeconds;
-  late int _breakSeconds;
+  final ValueNotifier<int> _remainingSec = ValueNotifier<int>(0);
 
-  bool _isRunning = true;
-  bool _isFocus = true;
+  String _phase = 'focus';
+  int _setIndex = 1;
+  int _setsTotal = 1;
+  int _phaseDurationSec = 0;
+  int _startAtMs = 0;
+  String _status = 'lobby';
 
-  int _currentSet = 1;
-  late int _remainingSeconds;
+  bool _advanceInFlight = false;
+  bool _sessionFinished = false;
+  bool _amIHost = false;
+
+  String get _myUid => FirebaseAuth.instance.currentUser?.uid ?? '';
 
   @override
   void initState() {
     super.initState();
 
-    _breakSeconds = widget.breakMinutes * 60;
-    _setTotalSeconds = widget.workMinutes * 60; // total per set (toggle ON )
+    _roomSub = RoomService.instance.watchRoom(widget.roomCode).listen((event) {
+      final raw = event.snapshot.value;
 
-    if (widget.includeBreaksInTotal) {
-      _focusSecondsInTotalMode = _setTotalSeconds - _breakSeconds;
-      if (_focusSecondsInTotalMode < 0) _focusSecondsInTotalMode = 0;
-
-      _isFocus = true;
-      _remainingSeconds = _focusSecondsInTotalMode;
-    } else {
-      _focusSecondsInTotalMode = 0;
-      _isFocus = true;
-      _remainingSeconds = widget.workMinutes * 60;
-    }
-
-    _startTicker();
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  void _startTicker() {
-    _timer?.cancel();
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
-      if (!_isRunning) return;
-
-      setState(() {
-        if (_remainingSeconds > 0) {
-          _remainingSeconds--;
-        } else {
-          _advancePhase();
+      if (raw == null) {
+        if (mounted) {
+          setState(() {
+            _sessionFinished = true;
+          });
         }
-      });
+        return;
+      }
+
+      final room = (raw as Map).cast<String, dynamic>();
+      final hostUid = room['hostUid'] as String?;
+      _amIHost = hostUid != null && hostUid == _myUid;
+
+      _status = (room['status'] ?? 'lobby') as String;
+      final sessionRaw = room['session'];
+
+      if (_status == 'ended' || sessionRaw == null) {
+        if (mounted) {
+          setState(() {
+            _sessionFinished = true;
+          });
+        }
+        return;
+      }
+
+      final session = (sessionRaw as Map).cast<String, dynamic>();
+
+      if (mounted) {
+        setState(() {
+          _sessionFinished = false;
+          _phase = (session['phase'] ?? 'focus') as String;
+          _setIndex = (session['setIndex'] ?? 1) as int;
+          _setsTotal = (session['setsTotal'] ?? 1) as int;
+          _phaseDurationSec = (session['phaseDurationSec'] ?? 0) as int;
+          _startAtMs = (session['startAt'] ?? 0) as int;
+        });
+      }
+
+      _updateRemaining();
+    });
+
+    _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
+      _updateRemaining();
     });
   }
 
-  void _advancePhase() {
-    if (widget.includeBreaksInTotal) {
-      // Total mod: Focus -> Break -> next Set Focus
-      if (_isFocus) {
-        _isFocus = false;
+  void _updateRemaining() {
+    if (_sessionFinished || _startAtMs == 0) return;
 
-        _remainingSeconds = _breakSeconds;
-        if (_remainingSeconds == 0) _advancePhase();
-        return;
-      }
+    final elapsedSec =
+    ((DateTime.now().millisecondsSinceEpoch - _startAtMs) ~/ 1000);
+    final remaining = max(0, _phaseDurationSec - elapsedSec);
 
-      // Break bitti -> sonraki set
-      _isFocus = true;
-
-      if (_currentSet < widget.sets) {
-        _currentSet++;
-        _remainingSeconds = _focusSecondsInTotalMode;
-        return;
-      }
-
-      _isRunning = false;
-      _timer?.cancel();
-      _showFinishedDialog();
-      return;
+    if (_remainingSec.value != remaining) {
+      _remainingSec.value = remaining;
     }
 
-    // Normal mod: Focus -> Break -> next Focus
-    if (_isFocus) {
-      _isFocus = false;
-
-      final breakSec = widget.breakMinutes * 60;
-      _remainingSeconds = breakSec > 0 ? breakSec : 0;
-
-      if (_remainingSeconds == 0) _advancePhase();
-      return;
-    }
-
-    _isFocus = true;
-
-    if (_currentSet < widget.sets) {
-      _currentSet++;
-      _remainingSeconds = widget.workMinutes * 60;
-    } else {
-      _isRunning = false;
-      _timer?.cancel();
-      _showFinishedDialog();
+    if (remaining <= 0 && _amIHost) {
+      _advanceIfNeeded();
     }
   }
 
-  void _showFinishedDialog() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Session completed 🎉'),
-        content: const Text('Great job! You finished all sets.'),
-        actions: [
-          FilledButton(
-            onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context);
-            },
-            child: const Text('Back to Room'),
-          ),
-        ],
-      ),
-    );
+  Future<void> _advanceIfNeeded() async {
+    if (_advanceInFlight) return;
+    _advanceInFlight = true;
+
+    try {
+      await RoomService.instance.advanceSession(code: widget.roomCode);
+    } catch (_) {
+      // sessiz geç
+    } finally {
+      _advanceInFlight = false;
+    }
   }
 
   String _formatTime(int seconds) {
-    final m = seconds ~/ 60;
-    final s = seconds % 60;
+    final safe = max(0, seconds);
+    final m = safe ~/ 60;
+    final s = safe % 60;
     final mm = m.toString().padLeft(2, '0');
     final ss = s.toString().padLeft(2, '0');
     return '$mm:$ss';
   }
 
   @override
+  void dispose() {
+    _roomSub?.cancel();
+    _ticker?.cancel();
+    _remainingSec.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final title = _isFocus ? 'Focus' : 'Break';
-    final timeText = _formatTime(_remainingSeconds);
+    if (_sessionFinished) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Session'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'Session completed 🎉',
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 12),
+              const Text('Great job!'),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Back to Room'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final title = _phase == 'break' ? 'Break' : 'Focus';
 
     return Scaffold(
       appBar: AppBar(
@@ -179,40 +190,49 @@ class _TimerScreenState extends State<TimerScreen> {
                 border: Border.all(width: 18),
               ),
               alignment: Alignment.center,
-              child: Text(
-                timeText,
-                style: const TextStyle(fontSize: 56, fontWeight: FontWeight.w800),
+              child: ValueListenableBuilder<int>(
+                valueListenable: _remainingSec,
+                builder: (context, value, _) {
+                  return Text(
+                    _formatTime(value),
+                    style: const TextStyle(
+                      fontSize: 56,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  );
+                },
               ),
             ),
 
             const SizedBox(height: 16),
             Text(
-              'Set $_currentSet/${widget.sets}',
+              'Set $_setIndex/$_setsTotal',
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
             ),
 
             const Spacer(),
 
-            Row(
-              children: [
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () => setState(() => _isRunning = !_isRunning),
-                    child: Text(_isRunning ? 'Pause' : 'Resume'),
-                  ),
+            if (_amIHost)
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () async {
+                    await RoomService.instance.endSession(code: widget.roomCode);
+                    if (!context.mounted) return;
+                    Navigator.pop(context);
+                  },
+                  child: const Text('End Session'),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      _timer?.cancel();
-                      Navigator.pop(context);
-                    },
-                    child: const Text('End'),
-                  ),
+              )
+            else
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Back to Room'),
                 ),
-              ],
-            ),
+              ),
+
             const SizedBox(height: 12),
           ],
         ),

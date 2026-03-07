@@ -63,7 +63,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   try {
                     await RoomService.instance.joinRoom(code);
-                    await RoomService.instance.addSelfAsMember(code); // ✅ EKLENDİ
+                    await RoomService.instance.addSelfAsMember(code); //  EKLENDİ
                   } catch (e) {
                     if (!sheetContext.mounted) return;
                     ScaffoldMessenger.of(sheetContext).showSnackBar(
