@@ -267,4 +267,53 @@ class RoomService {
       'session': null,
     });
   }
+  Future<void> pauseSession({
+    required String code,
+    required int remainingSec,
+  }) async {
+    final snap = await roomRef(code).get();
+    if (!snap.exists) throw Exception('Room not found');
+
+    final data = (snap.value as Map).cast<String, dynamic>();
+    if (data['hostUid'] != uid) throw Exception('Only host can pause');
+
+    final sessionRaw = data['session'];
+    if (sessionRaw == null) throw Exception('No active session');
+
+    final session = (sessionRaw as Map).cast<String, dynamic>();
+
+    await roomRef(code).update({
+      'status': 'paused',
+      'session': {
+        ...session,
+        'isPaused': true,
+        'remainingSec': remainingSec,
+      }
+    });
+  }
+
+  Future<void> resumeSession({required String code}) async {
+    final snap = await roomRef(code).get();
+    if (!snap.exists) throw Exception('Room not found');
+
+    final data = (snap.value as Map).cast<String, dynamic>();
+    if (data['hostUid'] != uid) throw Exception('Only host can resume');
+
+    final sessionRaw = data['session'];
+    if (sessionRaw == null) throw Exception('No active session');
+
+    final session = (sessionRaw as Map).cast<String, dynamic>();
+    final remainingSec = (session['remainingSec'] ?? 0) as int;
+
+    await roomRef(code).update({
+      'status': 'running',
+      'session': {
+        ...session,
+        'startAt': ServerValue.timestamp,
+        'phaseDurationSec': remainingSec,
+        'isPaused': false,
+        'remainingSec': null,
+      }
+    });
+  }
 }

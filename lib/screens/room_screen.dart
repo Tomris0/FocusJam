@@ -8,7 +8,7 @@ import 'timer_screen.dart';
 
 class RoomScreen extends StatefulWidget {
   final String roomCode;
-  final bool isHost; // artık sadece ilk tahmin; gerçek host DB’den okunacak
+  final bool isHost;
 
   const RoomScreen({
     super.key,
@@ -46,7 +46,8 @@ class _RoomScreenState extends State<RoomScreen> {
         final room = (raw as Map).cast<String, dynamic>();
 
         final hostUid = room['hostUid'] as String?;
-        final bool amIHost = hostUid != null && _myUid.isNotEmpty && hostUid == _myUid;
+        final bool amIHost =
+            hostUid != null && _myUid.isNotEmpty && hostUid == _myUid;
 
         final status = (room['status'] ?? 'lobby') as String;
         final sessionRaw = room['session'];
@@ -70,18 +71,29 @@ class _RoomScreenState extends State<RoomScreen> {
           });
         }
 
-        // Settings (DB’den oku -> lokal değişkenler)
         final settingsRaw = room['settings'];
-        final settings = (settingsRaw is Map) ? settingsRaw.cast<String, dynamic>() : <String, dynamic>{};
+        final settings = (settingsRaw is Map)
+            ? settingsRaw.cast<String, dynamic>()
+            : <String, dynamic>{};
 
         final int workMin = (settings['workMinutes'] ?? 25) as int;
         final int breakMin = (settings['breakMinutes'] ?? 5) as int;
         final int sets = (settings['sets'] ?? 4) as int;
-        final bool includeBreaksInTotal = (settings['includeBreaksInTotal'] ?? false) as bool;
+        final bool includeBreaksInTotal =
+        (settings['includeBreaksInTotal'] ?? false) as bool;
 
-        // Members count
         final membersRaw = room['members'];
         final int memberCount = (membersRaw is Map) ? membersRaw.length : 0;
+
+        final Map<String, dynamic> membersMap =
+        (membersRaw is Map) ? membersRaw.cast<String, dynamic>() : {};
+
+        final memberEntries = membersMap.entries.toList()
+          ..sort((a, b) {
+            final aJoined = ((a.value as Map)['joinedAt'] ?? 0) as int;
+            final bJoined = ((b.value as Map)['joinedAt'] ?? 0) as int;
+            return aJoined.compareTo(bJoined);
+          });
 
         return Scaffold(
           appBar: AppBar(
@@ -97,203 +109,268 @@ class _RoomScreenState extends State<RoomScreen> {
               ),
             ],
           ),
-          body: Padding(
+          body: ListView(
             padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                const Text(
-                  'Room Code',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-                ),
-                const SizedBox(height: 8),
-                SelectableText(
-                  widget.roomCode,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
-                ),
-                const SizedBox(height: 16),
+            children: [
+              const Text(
+                'Room Code',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              SelectableText(
+                widget.roomCode,
+                textAlign: TextAlign.center,
+                style:
+                const TextStyle(fontSize: 32, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                amIHost ? 'Host: You 👑' : 'Host: (in room)',
+                style: const TextStyle(fontSize: 16),
+              ),
+              const SizedBox(height: 8),
+              Text('Members: $memberCount / 32'),
+              const SizedBox(height: 12),
 
-                Text(
-                  amIHost ? 'Host: You 👑' : 'Host: (in room)',
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 8),
-                Text('Members: $memberCount / 32'),
-                const SizedBox(height: 20),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Members',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      if (memberEntries.isEmpty)
+                        const Text('No members yet')
+                      else
+                        ...memberEntries.map((entry) {
+                          final uid = entry.key;
+                          final member =
+                          (entry.value as Map).cast<String, dynamic>();
+                          final displayName =
+                          (member['displayName'] ?? 'User').toString();
 
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            const Text(
-                              'Session Settings',
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                          final isMe = uid == _myUid;
+                          final isHostMember = uid == hostUid;
+
+                          final subtitleParts = <String>[
+                            if (isMe) 'You',
+                            if (isHostMember) 'Host 👑',
+                          ];
+
+                          return ListTile(
+                            dense: true,
+                            contentPadding: EdgeInsets.zero,
+                            leading: CircleAvatar(
+                              child: Text(
+                                displayName.isNotEmpty
+                                    ? displayName[0].toUpperCase()
+                                    : '?',
+                              ),
                             ),
-                            const Spacer(),
-                            Text(
-                              amIHost ? 'Host can edit' : 'View only',
-                              style: const TextStyle(fontSize: 12),
+                            title: Text(
+                              displayName,
+                              style:
+                              const TextStyle(fontWeight: FontWeight.w600),
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-
-                        SettingRow(
-                          label: includeBreaksInTotal ? 'Total per set (min)' : 'Work (min)',
-                          value: workMin,
-                          enabled: amIHost,
-                          onMinus: () async {
-                            final newWork = (workMin > 5) ? workMin - 5 : workMin;
-
-                            // total moddaysa break >= total olmasın
-                            final newBreak = (includeBreaksInTotal && breakMin >= newWork)
-                                ? ((newWork > 1) ? newWork - 1 : 1)
-                                : breakMin;
-
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: newWork,
-                              breakMinutes: newBreak,
-                              sets: sets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                          onPlus: () async {
-                            final newWork = workMin + 5;
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: newWork,
-                              breakMinutes: breakMin,
-                              sets: sets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        SettingRow(
-                          label: 'Break (min)',
-                          value: breakMin,
-                          enabled: amIHost,
-                          onMinus: () async {
-                            final newBreak = (breakMin > 1) ? breakMin - 1 : breakMin;
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: workMin,
-                              breakMinutes: newBreak,
-                              sets: sets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                          onPlus: () async {
-                            final newBreak = breakMin + 1;
-
-                            // total moddaysa break >= total olmasın
-                            if (includeBreaksInTotal && newBreak >= workMin) {
-                              // izin verme (ya da otomatik düzelt)
-                              await RoomService.instance.updateSettings(
-                                code: widget.roomCode,
-                                workMinutes: workMin,
-                                breakMinutes: (workMin > 1) ? workMin - 1 : 1,
-                                sets: sets,
-                                includeBreaksInTotal: includeBreaksInTotal,
-                              );
-                              return;
-                            }
-
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: workMin,
-                              breakMinutes: newBreak,
-                              sets: sets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        SettingRow(
-                          label: 'Sets',
-                          value: sets,
-                          enabled: amIHost,
-                          onMinus: () async {
-                            final newSets = (sets > 1) ? sets - 1 : sets;
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: workMin,
-                              breakMinutes: breakMin,
-                              sets: newSets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                          onPlus: () async {
-                            final newSets = sets + 1;
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: workMin,
-                              breakMinutes: breakMin,
-                              sets: newSets,
-                              includeBreaksInTotal: includeBreaksInTotal,
-                            );
-                          },
-                        ),
-
-                        const SizedBox(height: 8),
-
-                        SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text('Include breaks in total time?'),
-                          subtitle: const Text('If ON, total time includes breaks.'),
-                          value: includeBreaksInTotal,
-                          onChanged: amIHost
-                              ? (v) async {
-                            // ON yapılınca break >= total ise break’i düzelt
-                            var nextBreak = breakMin;
-                            if (v && nextBreak >= workMin) {
-                              nextBreak = (workMin > 1) ? workMin - 1 : 1;
-                            }
-
-                            await RoomService.instance.updateSettings(
-                              code: widget.roomCode,
-                              workMinutes: workMin,
-                              breakMinutes: nextBreak,
-                              sets: sets,
-                              includeBreaksInTotal: v,
-                            );
-                          }
-                              : null,
-                        ),
-                      ],
-                    ),
+                            subtitle: Text(
+                              subtitleParts.isEmpty
+                                  ? 'Member'
+                                  : subtitleParts.join(' • '),
+                            ),
+                          );
+                        }),
+                    ],
                   ),
                 ),
+              ),
 
-                const Spacer(),
+              const SizedBox(height: 20),
 
-                FilledButton(
-                  onPressed: amIHost
-                      ? () async {
-                    await RoomService.instance.startSession(code: widget.roomCode);
-                  }
-                      : null,
-                  child: const Text('Start Session (host only)'),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text(
+                            'Session Settings',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Text(
+                            amIHost ? 'Host can edit' : 'View only',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+
+                      SettingRow(
+                        label: includeBreaksInTotal
+                            ? 'Total per set (min)'
+                            : 'Work (min)',
+                        value: workMin,
+                        enabled: amIHost,
+                        onMinus: () async {
+                          final newWork =
+                          (workMin > 5) ? workMin - 5 : workMin;
+
+                          final newBreak =
+                          (includeBreaksInTotal && breakMin >= newWork)
+                              ? ((newWork > 1) ? newWork - 1 : 1)
+                              : breakMin;
+
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: newWork,
+                            breakMinutes: newBreak,
+                            sets: sets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                        onPlus: () async {
+                          final newWork = workMin + 5;
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: newWork,
+                            breakMinutes: breakMin,
+                            sets: sets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      SettingRow(
+                        label: 'Break (min)',
+                        value: breakMin,
+                        enabled: amIHost,
+                        onMinus: () async {
+                          final newBreak =
+                          (breakMin > 1) ? breakMin - 1 : breakMin;
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: workMin,
+                            breakMinutes: newBreak,
+                            sets: sets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                        onPlus: () async {
+                          final newBreak = breakMin + 1;
+
+                          if (includeBreaksInTotal && newBreak >= workMin) {
+                            await RoomService.instance.updateSettings(
+                              code: widget.roomCode,
+                              workMinutes: workMin,
+                              breakMinutes: (workMin > 1) ? workMin - 1 : 1,
+                              sets: sets,
+                              includeBreaksInTotal: includeBreaksInTotal,
+                            );
+                            return;
+                          }
+
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: workMin,
+                            breakMinutes: newBreak,
+                            sets: sets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      SettingRow(
+                        label: 'Sets',
+                        value: sets,
+                        enabled: amIHost,
+                        onMinus: () async {
+                          final newSets = (sets > 1) ? sets - 1 : sets;
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: workMin,
+                            breakMinutes: breakMin,
+                            sets: newSets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                        onPlus: () async {
+                          final newSets = sets + 1;
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: workMin,
+                            breakMinutes: breakMin,
+                            sets: newSets,
+                            includeBreaksInTotal: includeBreaksInTotal,
+                          );
+                        },
+                      ),
+
+                      const SizedBox(height: 8),
+
+                      SwitchListTile(
+                        contentPadding: EdgeInsets.zero,
+                        title: const Text('Include breaks in total time?'),
+                        subtitle:
+                        const Text('If ON, total time includes breaks.'),
+                        value: includeBreaksInTotal,
+                        onChanged: amIHost
+                            ? (v) async {
+                          var nextBreak = breakMin;
+                          if (v && nextBreak >= workMin) {
+                            nextBreak = (workMin > 1) ? workMin - 1 : 1;
+                          }
+
+                          await RoomService.instance.updateSettings(
+                            code: widget.roomCode,
+                            workMinutes: workMin,
+                            breakMinutes: nextBreak,
+                            sets: sets,
+                            includeBreaksInTotal: v,
+                          );
+                        }
+                            : null,
+                      ),
+                    ],
+                  ),
                 ),
+              ),
 
-                const SizedBox(height: 12),
+              const SizedBox(height: 20),
 
-                OutlinedButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Back to Home'),
-                ),
-              ],
-            ),
+              FilledButton(
+                onPressed: amIHost
+                    ? () async {
+                  await RoomService.instance.startSession(
+                    code: widget.roomCode,
+                  );
+                }
+                    : null,
+                child: const Text('Start Session (host only)'),
+              ),
+
+              const SizedBox(height: 12),
+
+              OutlinedButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Back to Home'),
+              ),
+            ],
           ),
         );
       },
