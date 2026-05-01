@@ -59,8 +59,6 @@ Planned features:
 
 ## 📱 Screenshots
 
-## 📱 Screenshots
-
 <p align="center">
   <img src="assets/screens/home.png" width="200"/>
   <img src="assets/screens/room.png" width="200"/>
@@ -147,8 +145,6 @@ Planlanan özellikler:
 ---
 
 ## 📱 Ekran Görüntüleri
-
-## 📱 Screenshots
 
 <p align="center">
   <img src="assets/screens/home.png" width="200"/>
