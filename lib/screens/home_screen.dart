@@ -5,6 +5,7 @@ import 'room_screen.dart';
 import '../services/auth_service.dart';
 import '../services/room_service.dart';
 
+
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -63,7 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   try {
                     await RoomService.instance.joinRoom(code);
-                    await RoomService.instance.addSelfAsMember(code); //  EKLENDİ
+
+                    await RoomService.instance.setMyCurrentRoom(code);
+
+                    await RoomService.instance.addSelfAsMember(code);
+                    await RoomService.instance.setMyCurrentRoom(code);
                   } catch (e) {
                     if (!sheetContext.mounted) return;
                     ScaffoldMessenger.of(sheetContext).showSnackBar(
@@ -75,7 +80,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   if (!sheetContext.mounted) return;
 
                   Navigator.pop(sheetContext);
-                  _codeController.clear(); // opsiyonel
+                  _codeController.clear();
 
                   if (!mounted) return;
                   Navigator.push(
@@ -149,6 +154,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 includeBreaksInTotal: false,
               );
               await RoomService.instance.addSelfAsMember(code);
+              await RoomService.instance.setMyCurrentRoom(code);
 
               if (!dialogContext.mounted) return;
 

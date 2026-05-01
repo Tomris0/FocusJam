@@ -3,6 +3,7 @@ import 'package:firebase_database/firebase_database.dart';
 
 class RoomService {
   RoomService._();
+
   static final RoomService instance = RoomService._();
 
   final _auth = FirebaseAuth.instance;
@@ -70,7 +71,8 @@ class RoomService {
     final int workMinutes = (settings['workMinutes'] ?? 25) as int;
     final int breakMinutes = (settings['breakMinutes'] ?? 5) as int;
     final int sets = (settings['sets'] ?? 4) as int;
-    final bool includeBreaksInTotal = (settings['includeBreaksInTotal'] ?? false) as bool;
+    final bool includeBreaksInTotal = (settings['includeBreaksInTotal'] ??
+        false) as bool;
 
     int phaseDurationSec;
     if (includeBreaksInTotal) {
@@ -267,6 +269,7 @@ class RoomService {
       'session': null,
     });
   }
+
   Future<void> pauseSession({
     required String code,
     required int remainingSec,
@@ -316,4 +319,24 @@ class RoomService {
       }
     });
   }
+
+  Future<void> setMyCurrentRoom(String code) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await FirebaseDatabase.instance
+        .ref('users/${user.uid}/currentRoom')
+        .set(code);
+  }
+
+  Future<void> clearMyCurrentRoom() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    await FirebaseDatabase.instance
+        .ref('users/${user.uid}/currentRoom')
+        .remove();
+  }
+
+
 }

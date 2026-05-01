@@ -5,6 +5,7 @@ import 'package:firebase_database/firebase_database.dart';
 import '../services/room_service.dart';
 import '../widgets/setting_row.dart';
 import 'timer_screen.dart';
+import 'home_screen.dart';
 
 class RoomScreen extends StatefulWidget {
   final String roomCode;
@@ -102,8 +103,12 @@ class _RoomScreenState extends State<RoomScreen> {
               TextButton(
                 onPressed: () async {
                   await RoomService.instance.removeSelfFromMember(widget.roomCode);
+                  await RoomService.instance.clearMyCurrentRoom();
                   if (!context.mounted) return;
-                  Navigator.pop(context);
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (_) => const HomeScreen()),
+                        (route) => false,
+                  );
                 },
                 child: const Text('Leave'),
               ),
