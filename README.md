@@ -60,10 +60,10 @@ Planned features:
 ## 📱 Screenshots
 
 <p align="center">
-  <img src="assets/screens/home.png" width="200"/>
-  <img src="assets/screens/room.png" width="200"/>
-  <img src="assets/screens/timer.png" width="200"/>
-  <img src="assets/screens/login.png" width="200"/>
+  <img src="Screenshot_20260502_001449.png" width="200"/>
+  <img src="Screenshot_20260502_001536.png" width="200"/>
+  <img src="Screenshot_20260502_001553.png" width="200"/>
+  <img src="image.png" width="200"/>
 </p>
 
 ---
@@ -147,10 +147,10 @@ Planlanan özellikler:
 ## 📱 Ekran Görüntüleri
 
 <p align="center">
-  <img src="assets/screens/home.png" width="200"/>
-  <img src="assets/screens/room.png" width="200"/>
-  <img src="assets/screens/timer.png" width="200"/>
-  <img src="assets/screens/login.png" width="200"/>
+  <img src="Screenshot_20260502_001449.png" width="200"/>
+  <img src="Screenshot_20260502_001536.png" width="200"/>
+  <img src="Screenshot_20260502_001553.png" width="200"/>
+  <img src="image.png" width="200"/>
 </p>
 
 ---
