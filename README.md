@@ -59,17 +59,14 @@ Planned features:
 
 ## 📱 Screenshots
 
-### Home
-![Home](assets/screens/home.png)
+## 📱 Screenshots
 
-### Room
-![Room](assets/screens/room.png)
-
-### Timer
-![Timer](assets/screens/timer.png)
-
-### Login
-![Login](assets/screens/login.png)
+<p align="center">
+  <img src="assets/screens/home.png" width="200"/>
+  <img src="assets/screens/room.png" width="200"/>
+  <img src="assets/screens/timer.png" width="200"/>
+  <img src="assets/screens/login.png" width="200"/>
+</p>
 
 ---
 
@@ -151,17 +148,14 @@ Planlanan özellikler:
 
 ## 📱 Ekran Görüntüleri
 
-### Home
-![Home](assets/screens/home.png)
+## 📱 Screenshots
 
-### Room
-![Room](assets/screens/room.png)
-
-### Timer
-![Timer](assets/screens/timer.png)
-
-### Login
-![Login](assets/screens/login.png)
+<p align="center">
+  <img src="assets/screens/home.png" width="200"/>
+  <img src="assets/screens/room.png" width="200"/>
+  <img src="assets/screens/timer.png" width="200"/>
+  <img src="assets/screens/login.png" width="200"/>
+</p>
 
 ---
 
