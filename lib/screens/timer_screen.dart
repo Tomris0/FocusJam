@@ -21,11 +21,10 @@ class TimerScreen extends StatefulWidget {
 
 class _TimerScreenState extends State<TimerScreen> {
   StreamSubscription<DatabaseEvent>? _roomSub;
+  StreamSubscription<DatabaseEvent>? _offsetSub;
   Timer? _ticker;
 
-  StreamSubscription<DatabaseEvent>? _offsetSub;
   int _serverOffsetMs = 0;
-
   bool _autoPopped = false;
 
   final ValueNotifier<int> _remainingSec = ValueNotifier<int>(0);
@@ -53,9 +52,8 @@ class _TimerScreenState extends State<TimerScreen> {
         .onValue
         .listen((event) {
       final value = event.snapshot.value;
-      if (value is int) {
-        _serverOffsetMs = value;
-      } else if (value is double) {
+
+      if (value is num) {
         _serverOffsetMs = value.toInt();
       } else {
         _serverOffsetMs = 0;
@@ -98,16 +96,18 @@ class _TimerScreenState extends State<TimerScreen> {
         setState(() {
           _sessionFinished = false;
           _phase = (session['phase'] ?? 'focus') as String;
-          _setIndex = (session['setIndex'] ?? 1) as int;
-          _setsTotal = (session['setsTotal'] ?? 1) as int;
-          _phaseDurationSec = (session['phaseDurationSec'] ?? 0) as int;
-          _startAtMs = (session['startAt'] ?? 0) as int;
+          _setIndex = (session['setIndex'] as num? ?? 1).toInt();
+          _setsTotal = (session['setsTotal'] as num? ?? 1).toInt();
+          _phaseDurationSec =
+              (session['phaseDurationSec'] as num? ?? 0).toInt();
+          _startAtMs = (session['startAt'] as num? ?? 0).toInt();
           _isPaused = isPaused;
         });
       }
 
       if (isPaused) {
-        final pausedRemaining = (session['remainingSec'] ?? 0) as int;
+        final pausedRemaining =
+        (session['remainingSec'] as num? ?? 0).toInt();
         _remainingSec.value = max(0, pausedRemaining);
       } else {
         _updateRemaining();
@@ -124,7 +124,9 @@ class _TimerScreenState extends State<TimerScreen> {
   void _updateRemaining() {
     if (_sessionFinished || _startAtMs == 0 || _isPaused) return;
 
-    final serverNowMs = DateTime.now().millisecondsSinceEpoch + _serverOffsetMs;
+    final serverNowMs =
+        DateTime.now().millisecondsSinceEpoch + _serverOffsetMs;
+
     final elapsedSec = ((serverNowMs - _startAtMs) ~/ 1000);
     final remaining = max(0, _phaseDurationSec - elapsedSec);
 
@@ -139,6 +141,7 @@ class _TimerScreenState extends State<TimerScreen> {
 
   Future<void> _advanceIfNeeded() async {
     if (_advanceInFlight) return;
+
     _advanceInFlight = true;
 
     try {
@@ -154,8 +157,10 @@ class _TimerScreenState extends State<TimerScreen> {
     final safe = max(0, seconds);
     final m = safe ~/ 60;
     final s = safe % 60;
+
     final mm = m.toString().padLeft(2, '0');
     final ss = s.toString().padLeft(2, '0');
+
     return '$mm:$ss';
   }
 
@@ -163,9 +168,9 @@ class _TimerScreenState extends State<TimerScreen> {
   void dispose() {
     _roomSub?.cancel();
     _ticker?.cancel();
+    _offsetSub?.cancel();
     _remainingSec.dispose();
     super.dispose();
-    _offsetSub?.cancel();
   }
 
   @override
@@ -191,7 +196,10 @@ class _TimerScreenState extends State<TimerScreen> {
             children: [
               Text(
                 'Session completed 🎉',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               SizedBox(height: 12),
               Text('Returning to room...'),
@@ -214,26 +222,41 @@ class _TimerScreenState extends State<TimerScreen> {
             const SizedBox(height: 24),
             Text(
               _isPaused ? '$title (Paused)' : title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
             ),
             const SizedBox(height: 24),
-            Container(
+            SizedBox(
               width: 260,
               height: 260,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(width: 18),
-              ),
-              alignment: Alignment.center,
               child: ValueListenableBuilder<int>(
                 valueListenable: _remainingSec,
                 builder: (context, value, _) {
-                  return Text(
-                    _formatTime(value),
-                    style: const TextStyle(
-                      fontSize: 56,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  final progress = _phaseDurationSec <= 0
+                      ? 0.0
+                      : value / _phaseDurationSec;
+
+                  return Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      SizedBox(
+                        width: 260,
+                        height: 260,
+                        child: CircularProgressIndicator(
+                          value: progress.clamp(0.0, 1.0),
+                          strokeWidth: 18,
+                        ),
+                      ),
+                      Text(
+                        _formatTime(value),
+                        style: const TextStyle(
+                          fontSize: 56,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   );
                 },
               ),
@@ -241,7 +264,10 @@ class _TimerScreenState extends State<TimerScreen> {
             const SizedBox(height: 16),
             Text(
               'Set $_setIndex/$_setsTotal',
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const Spacer(),
             if (_amIHost)
@@ -268,7 +294,10 @@ class _TimerScreenState extends State<TimerScreen> {
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () async {
-                        await RoomService.instance.endSession(code: widget.roomCode);
+                        await RoomService.instance.endSession(
+                          code: widget.roomCode,
+                        );
+
                         if (!context.mounted) return;
                         Navigator.pop(context);
                       },

@@ -113,7 +113,16 @@ class RoomService {
   Future<void> removeSelfFromMember(String code) async {
     final user = _auth.currentUser;
     if (user == null) return;
-    await roomRef(code).child('members/${user.uid}').remove();
+
+    final membersRef = roomRef(code).child('members');
+
+    await membersRef.child(user.uid).remove();
+
+    final membersSnap = await membersRef.get();
+
+    if (!membersSnap.exists || membersSnap.children.isEmpty) {
+      await roomRef(code).remove();
+    }
   }
 
   Future<void> advanceSession({required String code}) async {
