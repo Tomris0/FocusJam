@@ -39,9 +39,19 @@ class _RoomScreenState extends State<RoomScreen> {
         final raw = snapshot.data?.snapshot.value;
 
         if (raw == null) {
-          return Scaffold(
-            appBar: AppBar(title: const Text('Room')),
-            body: const Center(child: Text('Room not found / deleted')),
+          WidgetsBinding.instance.addPostFrameCallback((_) async {
+            await RoomService.instance.clearMyCurrentRoom();
+
+            if (!context.mounted) return;
+
+            Navigator.of(context).pushAndRemoveUntil(
+              MaterialPageRoute(builder: (_) => const HomeScreen()),
+                  (route) => false,
+            );
+          });
+
+          return const Scaffold(
+            body: Center(child: CircularProgressIndicator()),
           );
         }
 

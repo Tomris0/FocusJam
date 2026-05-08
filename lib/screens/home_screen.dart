@@ -64,9 +64,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                   try {
                     await RoomService.instance.joinRoom(code);
-
-                    await RoomService.instance.setMyCurrentRoom(code);
-
                     await RoomService.instance.addSelfAsMember(code);
                     await RoomService.instance.setMyCurrentRoom(code);
                   } catch (e) {
@@ -110,8 +107,10 @@ class _HomeScreenState extends State<HomeScreen> {
     return List.generate(length, (_) => chars[rand.nextInt(chars.length)]).join();
   }
 
-  void _createRoom() {
-    final code = _generateJoinCode();
+  Future<void> _createRoom() async {
+    final code = await RoomService.instance.generateUniqueRoomCode();
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -125,7 +124,10 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(height: 12),
             SelectableText(
               code,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ],
         ),
@@ -136,10 +138,16 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           FilledButton(
             onPressed: () async {
-              await Clipboard.setData(ClipboardData(text: code));
+              await Clipboard.setData(
+                ClipboardData(text: code),
+              );
+
               if (!dialogContext.mounted) return;
+
               ScaffoldMessenger.of(dialogContext).showSnackBar(
-                const SnackBar(content: Text('Code copied to clipboard')),
+                const SnackBar(
+                  content: Text('Code copied to clipboard'),
+                ),
               );
             },
             child: const Text('Copy'),
@@ -153,6 +161,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 sets: 4,
                 includeBreaksInTotal: false,
               );
+
               await RoomService.instance.addSelfAsMember(code);
               await RoomService.instance.setMyCurrentRoom(code);
 
@@ -161,10 +170,14 @@ class _HomeScreenState extends State<HomeScreen> {
               Navigator.pop(dialogContext);
 
               if (!mounted) return;
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => RoomScreen(roomCode: code, isHost: true),
+                  builder: (_) => RoomScreen(
+                    roomCode: code,
+                    isHost: true,
+                  ),
                 ),
               );
             },

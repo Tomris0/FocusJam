@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
+import 'dart:math';
 
 class RoomService {
   RoomService._();
@@ -345,6 +346,24 @@ class RoomService {
     await FirebaseDatabase.instance
         .ref('users/${user.uid}/currentRoom')
         .remove();
+  }
+
+  Future<String> generateUniqueRoomCode({int length = 6}) async {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    final rand = Random.secure();
+
+    while (true) {
+      final code = List.generate(
+        length,
+            (_) => chars[rand.nextInt(chars.length)],
+      ).join();
+
+      final snapshot = await roomRef(code).get();
+
+      if (!snapshot.exists) {
+        return code;
+      }
+    }
   }
 
 
