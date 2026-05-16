@@ -215,63 +215,80 @@ class _TimerScreenState extends State<TimerScreen> {
       appBar: AppBar(
         title: const Text('Session'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
+      body: SafeArea(
         child: Column(
           children: [
-            const SizedBox(height: 24),
-            Text(
-              _isPaused ? '$title (Paused)' : title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: 260,
-              height: 260,
-              child: ValueListenableBuilder<int>(
-                valueListenable: _remainingSec,
-                builder: (context, value, _) {
-                  final progress = _phaseDurationSec <= 0
-                      ? 0.0
-                      : value / _phaseDurationSec;
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  children: [
+                    const SizedBox(height: 24),
+                    Text(
+                      _isPaused ? '$title (Paused)' : title,
+                      style: const TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    SizedBox(
+                      width: 260,
+                      height: 260,
+                      child: ValueListenableBuilder<int>(
+                        valueListenable: _remainingSec,
+                        builder: (context, value, _) {
+                          final safeDuration =
+                          _phaseDurationSec <= 0 ? 1 : _phaseDurationSec;
 
-                  return Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      SizedBox(
-                        width: 260,
-                        height: 260,
-                        child: CircularProgressIndicator(
-                          value: progress.clamp(0.0, 1.0),
-                          strokeWidth: 18,
-                        ),
+                          final progress =
+                          (value / safeDuration).clamp(0.0, 1.0);
+
+                          return Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              SizedBox(
+                                width: 260,
+                                height: 260,
+                                child: CircularProgressIndicator(
+                                  value: progress,
+                                  strokeWidth: 18,
+                                ),
+                              ),
+                              Text(
+                                _formatTime(value),
+                                style: const TextStyle(
+                                  fontSize: 56,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
-                      Text(
-                        _formatTime(value),
-                        style: const TextStyle(
-                          fontSize: 56,
-                          fontWeight: FontWeight.w800,
-                        ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Set $_setIndex/$_setsTotal',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
                       ),
-                    ],
-                  );
-                },
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 16),
-            Text(
-              'Set $_setIndex/$_setsTotal',
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                8,
+                16,
+                MediaQuery.of(context).padding.bottom + 12,
               ),
-            ),
-            const Spacer(),
-            if (_amIHost)
-              Row(
+              child: _amIHost
+                  ? Row(
                 children: [
                   Expanded(
                     child: FilledButton(
@@ -306,15 +323,14 @@ class _TimerScreenState extends State<TimerScreen> {
                   ),
                 ],
               )
-            else
-              SizedBox(
+                  : SizedBox(
                 width: double.infinity,
                 child: OutlinedButton(
                   onPressed: () => Navigator.pop(context),
                   child: const Text('Back to Room'),
                 ),
               ),
-            const SizedBox(height: 12),
+            ),
           ],
         ),
       ),
